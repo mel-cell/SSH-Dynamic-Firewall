@@ -1,0 +1,31 @@
+Deskripsi Detail Arsitektur SSH Dynamic Firewall (C Binary)
+
+Lapisan 1 — Trigger Point
+PAM Trigger (pam_exec.so) adalah pintu masuk sistem. Bagian ini tidak berubah dari sistem lama — konfigurasi di /etc/pam.d/sshd tetap sama. PAM memanggil binary C kita via pam_exec.so setiap kali ada event open_session (login) atau close_session (logout). Dari sini, kontrol diserahkan sepenuhnya ke binary C.
+
+Lapisan 2 — Binary Utama
+ssh-firewall (binary C) adalah inti dari sistem baru, menggantikan whitelist.sh sepenuhnya. Binary ini yang menerima environment variable dari PAM ($PAM_USER, $PAM_TYPE, $SSH_CLIENT), memutuskan apa yang harus dilakukan, lalu mendelegasikan ke modul-modul di bawahnya.
+
+Lapisan 3 — Source Files (Modul Utama)
+Binary dipecah menjadi tiga modul utama:
+main.c — Entry point dan environment parsing. Tugasnya membaca variabel dari PAM, memvalidasi input awal, lalu memanggil fungsi dari modul lain sesuai konteks (login vs logout).
+firewall.c / firewall.h — UFW command wrapper. Berisi fungsi untuk menambah dan menghapus rule UFW. Menggunakan execvp() bukan system() untuk menghindari shell injection risk.
+ipstore.c / ipstore.h — Bertanggung jawab atas semua operasi baca/tulis ke active_ips.txt. Tahu cara mencari apakah IP sudah ada, menambah entri baru, dan menghapus entri saat logout.
+
+Lapisan 4 — Source Files (Modul Pendukung)
+logger.c / logger.h — Menangani semua pencatatan. Menulis ke firewall.log untuk format yang kompatibel dengan sistem lama, sekaligus mengirim ke syslog() agar log masuk ke journald secara terpusat.
+netutil.c / netutil.h — Utilitas parsing dan validasi IP. Menggunakan inet_pton() dari standard library C sehingga mendukung format IPv4 dan IPv6 secara proper — tidak lagi mengandalkan awk/cut yang fragile.
+lock.c / lock.h — Wrapper untuk flock(). Menyediakan fungsi lock_acquire() dan lock_release() yang dipakai oleh ipstore.c setiap kali membuka file active_ips.txt, memastikan tidak ada dua proses yang menulis bersamaan.
+
+Lapisan 5 — Runtime Files (/etc/ssh-firewall/)
+active_ips.txt — File state yang menyimpan daftar IP aktif beserta username dan timestamp. Setiap operasi baca/tulis ke file ini dijaga oleh .lock file via flock().
+firewall.log — File log aktivitas. Formatnya dipertahankan sama dengan sistem lama (timestamp | action | user | IP | status) sehingga tidak perlu mengubah tools monitoring yang sudah ada.
+ssh-firewall binary — File binary hasil kompilasi yang ditempatkan di direktori ini. Permission-nya dikonfigurasi via sudoers agar bisa memanggil UFW tanpa password, menggantikan kebutuhan setuid langsung.
+
+Lapisan 6 — Perbaikan Utama vs Shell Script
+Lima perbaikan konkret yang didapat dari migrasi ke C:
+flock() locking — Menyelesaikan race condition. Dua user yang login bersamaan tidak akan pernah corrupt active_ips.txt karena proses kedua otomatis mengantri sampai proses pertama selesai.
+inet_pton() parsing — IP address diparse menggunakan fungsi standar POSIX, bukan split string manual. Hasilnya: format IPv6 seperti ::1 atau fe80::... ditangani dengan benar tanpa kode tambahan.
+syslog() integration — Log tidak hanya ditulis ke flat file, tapi juga masuk ke system journal (journald). Artinya bisa dimonitor via journalctl -t ssh-firewall dan terintegrasi dengan tools monitoring sistem lain.
+Exit code proper — Binary C mengembalikan exit code yang bermakna. PAM bisa membaca apakah operasi berhasil atau gagal — sesuatu yang sulit dilakukan konsisten di shell script. Kalau UFW gagal, PAM tahu dan bisa bereaksi.
+execvp() UFW call — UFW dipanggil langsung tanpa perantara shell (/bin/sh). Argumen dipisah sebagai array ({"ufw", "allow", "from", ip, NULL}), sehingga tidak ada celah shell injection meskipun ada karakter aneh di IP string.
