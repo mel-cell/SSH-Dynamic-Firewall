@@ -1,5 +1,9 @@
 # Cetak Biru: SSH Dynamic Firewall
 
+![image](image.png)
+
+---
+
 Struktur File & Direktori
 
 /etc/ssh-firewall/
