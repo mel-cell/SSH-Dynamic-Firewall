@@ -1,13 +1,17 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -Isrc
-SRC = src/main.c src/netutil.c src/logger.c src/lock.c src/ipstore.c src/firewall.c
-OBJ = $(SRC:.c=.o)
-TARGET = ssh-firewall
+LDFLAGS = 
 
-all: $(TARGET)
+SRC = src/main.o src/netutil.o src/logger.o src/lock.o src/ipstore.o src/firewall.o
+MONITOR_SRC = src/monitor.o
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ)
+all: ssh-firewall ssh-monitor
+
+ssh-firewall: $(SRC)
+	$(CC) $(CFLAGS) -o ssh-firewall $(SRC) $(LDFLAGS)
+
+ssh-monitor: $(MONITOR_SRC)
+	$(CC) $(CFLAGS) -o ssh-monitor $(MONITOR_SRC) $(LDFLAGS)
 
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm -f src/*.o ssh-firewall ssh-monitor

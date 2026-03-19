@@ -16,42 +16,41 @@ int main() {
      */
     const char *client = getenv("PAM_RHOST");
 
-    /* DEBUG SEMENTARA - hapus setelah sistem jalan */
-    fprintf(stderr, "DEBUG: PAM_USER='%s' PAM_TYPE='%s' PAM_RHOST='%s'\n",
-        user ? user : "(null)",
-        type ? type : "(null)",
-        client ? client : "(null)");
-
     // validasi awal: pastikan data tidak kosong
     if (!user || !type || !client) {
-        fprintf(stderr, "DEBUG: EARLY EXIT - ada variable yang null!\n");
         return 0;
     }
 
     // parse ip address
     char ip[64];
     if (extract_and_validation_ip(client, ip, sizeof(ip)) != 0) {
-        log_event("ERROR", user, "-", "Invalid IP");
         return 0;
     }
 
     // handle open_session
     if (strcmp(type, "open_session") == 0) {
         if (ip_count_sessions(ip) == 0) {
+            /* IP baru: buka firewall, lalu catat ke active list */
             firewall_allow(ip);
-            log_event("OPEN", user, ip, "RULE ADDED");
+            ip_add_entry(ip, user);
+            log_event("OPEN", user, ip, "rule ADDED");
+        } else {
+            /* IP sudah ada dari user lain, cukup catat sesinya */
+            ip_add_entry(ip, user);
+            log_event("OPEN", user, ip, "IP already active, skipped");
         }
-        ip_add_entry(ip, user);
     }
 
     // handle close_session
-    if (strcmp(type, "close_session") == 0) {
+    else if (strcmp(type, "close_session") == 0) {
         if (ip_remove_entry(ip, user)) {
             if (ip_count_sessions(ip) == 0) {
+                /* Tidak ada sesi lain dari IP ini: tutup firewall */
                 firewall_deny(ip);
-                log_event("CLOSE", user, ip, "RULE REMOVED");
+                log_event("CLOSE", user, ip, "rule REMOVED");
             } else {
-                log_event("CLOSE", user, ip, "RULE KEHITUNG");
+                /* Masih ada user lain dari IP ini */
+                log_event("CLOSE", user, ip, "other users still active");
             }
         }
     }
