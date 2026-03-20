@@ -58,25 +58,26 @@ bool ip_remove_entry(const char *ip, const char *user) {
     char target[128];
     sprintf(target, "%s | %s", ip, user);
 
-    bool found = false;
+    bool removed_one = false;
     while (fgets(line, sizeof(line), f)) {
-        /* Jika baris TIDAK mengandung target, tulis ke file temp */
-        if (strstr(line, target) == NULL) {
-            fputs(line, temp);
-        } else {
-            found = true;
+        /* Jika baris mengandung target DAN belum ada yang dihapus, hapus (jangan tulis ke temp) */
+        if (!removed_one && strstr(line, target) != NULL) {
+            removed_one = true;
+            continue; // Lewati baris ini (hapus)
         }
+        /* Sisanya tulis ke file temp */
+        fputs(line, temp);
     }
 
     fclose(f);
     fclose(temp);
 
     /* Ganti file asli dengan file temp yang sudah "dibersihkan" */
-    if (found) {
+    if (removed_one) {
         rename(IP_STORE_FILE ".tmp", IP_STORE_FILE);
     } else {
         remove(IP_STORE_FILE ".tmp");
     }
 
-    return found;
+    return removed_one;
 }
