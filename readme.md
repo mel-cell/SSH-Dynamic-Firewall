@@ -12,7 +12,7 @@ Sistem keamanan firewall dinamis berbasis bahasa C yang terintegrasi dengan PAM 
 - [x] Mendukung IPv4 dan IPv6 secara native.
 - [x] Pencegahan Race Condition menggunakan File Locking (flock).
 - [x] Keamanan Tinggi: Tanpa shell injection (menggunakan execvp).
-- [x] Restriksi Port: Hanya mengizinkan port 1-1000 dan Docker routing.
+- [x] Akses Penuh: Mengizinkan semua port (IN & FWD) untuk IP yang whitelisted.
 - [x] Logging: Mencatat aktivitas ke file lokal dan syslog.
 - [x] Monitoring CLI: Tool khusus untuk memantau status secara real-time.
 
