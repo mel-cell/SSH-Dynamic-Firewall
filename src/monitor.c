@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <stdbool.h>
 
 #define LOG_FILE "/etc/ssh-firewall/firewall.log"
 #define STORE_FILE "/etc/ssh-firewall/active_ips.txt"
@@ -16,14 +17,34 @@ void show_active_sessions() {
     FILE *f = fopen(STORE_FILE, "r");
     if (!f) return;
 
-    printf("\033[1;33m>>> PENGGUNA TERHUBUNG\033[0m\n");
+    printf("\033[1;33m>>> PENGGUNA TERHUBUNG (UNIK)\033[0m\n");
     char line[256];
+    char seen[100][150]; // Simpan maksimal 100 entri unik untuk de-duplikasi
+    int seen_count = 0;
     int count = 0;
+
     while (fgets(line, sizeof(line), f)) {
-        char ip[64], user[64], timestamp[128];
-        if (sscanf(line, "%[^|]| %[^|]| %[^\n]", ip, user, timestamp) == 3) {
-            printf(" \033[1;32m●\033[0m %-15s | %-12s | %s\n", user, ip, timestamp);
-            count++;
+        char ip[64], user[64], timestamp[128], pair[150];
+        if (sscanf(line, "%63[^|]| %63[^|]| %127[^\n]", ip, user, timestamp) == 3) {
+            // Trim trailing spaces from user and ip for comparison
+            char *p = ip + strlen(ip) - 1; while(p > ip && *p == ' ') *p-- = '\0';
+            p = user + strlen(user) - 1; while(p > user && *p == ' ') *p-- = '\0';
+            
+            snprintf(pair, sizeof(pair), "%s|%s", user, ip);
+            
+            bool already_seen = false;
+            for (int i = 0; i < seen_count; i++) {
+                if (strcmp(seen[i], pair) == 0) {
+                    already_seen = true;
+                    break;
+                }
+            }
+
+            if (!already_seen) {
+                printf(" \033[1;32m●\033[0m %-15s | %-12s | %s\n", user, ip, timestamp);
+                if (seen_count < 100) strcpy(seen[seen_count++], pair);
+                count++;
+            }
         }
     }
     if (count == 0) printf(" (Server kosong)\n");

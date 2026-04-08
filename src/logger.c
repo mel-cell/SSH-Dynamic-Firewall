@@ -28,7 +28,7 @@ void log_event(const char *action, const char *user, const char *ip, const char 
 
         lock_acquire(fd);
 
-        fprintf(f, "[%s] %s | %s | %s\n", action, time_str, user, ip, status); // check supaya beneran ketulis
+        fprintf(f, "[%s] %s | %s | %s | %s\n", action, time_str, user, ip, status); // check supaya beneran ketulis
 
         lock_release(fd);
         fclose(f);

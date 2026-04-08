@@ -25,24 +25,25 @@ static int execute_ufw(char *const args[]) {
 }
 
 int firewall_allow(const char *ip) {
-    /* Rule 1: Allow access to system ports 1-1000 */
+    /* Rule 1: Allow all access from this IP (Host level) */
     /* Kita gunakan 'insert 1' agar aturannya ada di urutan teratas (pioritas tinggi) */
-    char *args1[] = {"sudo", "ufw", "insert", "1", "allow", "from", (char *)ip, "to", "any", "port", "1:1000", NULL};
+    char *args1[] = {"sudo", "ufw", "insert", "1", "allow", "from", (char *)ip, NULL};
     execute_ufw(args1);
 
     /* Rule 2: Allow access to Docker forwarding (Host to Container) */
-    char *args2[] = {"sudo", "ufw", "route", "allow", "from", (char *)ip, NULL};
+    /* Kita gunakan 'insert 1' juga untuk route agar diproses di awal FORWARD chain */
+    char *args2[] = {"sudo", "ufw", "route", "insert", "1", "allow", "from", (char *)ip, NULL};
     execute_ufw(args2);
 
     return 0;
 }
 
 int firewall_deny(const char *ip) {
-    /* Hapus aturan port 1-1000 */
-    char *args1[] = {"sudo", "ufw", "delete", "allow", "from", (char *)ip, "to", "any", "port", "1:1000", NULL};
+    /* Hapus semua aturan dari IP ini (Host level) */
+    char *args1[] = {"sudo", "ufw", "delete", "allow", "from", (char *)ip, NULL};
     execute_ufw(args1);
 
-    /* Hapus aturan Docker forwarding */
+    /* Hapus semua aturan forwarding dari IP ini */
     char *args2[] = {"sudo", "ufw", "delete", "route", "allow", "from", (char *)ip, NULL};
     execute_ufw(args2);
 

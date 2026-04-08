@@ -5,6 +5,7 @@
 #include "ipstore.h"
 #include "firewall.h"
 #include "logger.h"
+#include "lock.h"
 
 int main() {
     const char *user = getenv("PAM_USER");
@@ -29,6 +30,7 @@ int main() {
 
     // handle open_session
     if (strcmp(type, "open_session") == 0) {
+        global_lock_acquire();
         if (ip_count_sessions(ip) == 0) {
             /* IP baru: buka firewall, lalu catat ke active list */
             firewall_allow(ip);
@@ -39,10 +41,12 @@ int main() {
             ip_add_entry(ip, user);
             log_event("OPEN", user, ip, "IP already active, skipped");
         }
+        global_lock_release();
     }
 
     // handle close_session
     else if (strcmp(type, "close_session") == 0) {
+        global_lock_acquire();
         if (ip_remove_entry(ip, user)) {
             if (ip_count_sessions(ip) == 0) {
                 /* Tidak ada sesi lain dari IP ini: tutup firewall */
@@ -53,6 +57,7 @@ int main() {
                 log_event("CLOSE", user, ip, "other users still active");
             }
         }
+        global_lock_release();
     }
 
     return 0;
