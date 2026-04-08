@@ -19,18 +19,18 @@ void show_active_sessions() {
 
     printf("\033[1;33m>>> PENGGUNA TERHUBUNG (UNIK)\033[0m\n");
     char line[256];
-    char seen[100][128]; // Simpan maksimal 100 entri unik untuk de-duplikasi
+    char seen[100][150]; // Simpan maksimal 100 entri unik untuk de-duplikasi
     int seen_count = 0;
     int count = 0;
 
     while (fgets(line, sizeof(line), f)) {
-        char ip[64], user[64], timestamp[128], pair[128];
-        if (sscanf(line, "%[^|]| %[^|]| %[^\n]", ip, user, timestamp) == 3) {
+        char ip[64], user[64], timestamp[128], pair[150];
+        if (sscanf(line, "%63[^|]| %63[^|]| %127[^\n]", ip, user, timestamp) == 3) {
             // Trim trailing spaces from user and ip for comparison
             char *p = ip + strlen(ip) - 1; while(p > ip && *p == ' ') *p-- = '\0';
             p = user + strlen(user) - 1; while(p > user && *p == ' ') *p-- = '\0';
             
-            sprintf(pair, "%s|%s", user, ip);
+            snprintf(pair, sizeof(pair), "%s|%s", user, ip);
             
             bool already_seen = false;
             for (int i = 0; i < seen_count; i++) {
