@@ -29,7 +29,9 @@ int lock_acquire(int fd);
  *  -1  jika gagal
  */
 
- int lock_release(int fd);
+int lock_release(int fd);
 
- #endif
+int global_lock_acquire(void);
+int global_lock_release(void);
 
+#endif

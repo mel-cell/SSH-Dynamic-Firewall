@@ -11,8 +11,11 @@ int ip_count_sessions(const char *ip) {
 
     int count = 0;
     char line[256];
+    char target_prefix[128];
+    snprintf(target_prefix, sizeof(target_prefix), "%s | ", ip);
+
     while (fgets(line, sizeof(line), f)) {
-        if (strstr(line, ip)) {
+        if (strncmp(line, target_prefix, strlen(target_prefix)) == 0) {
             count++;
         }
     }
@@ -30,15 +33,9 @@ bool ip_add_entry(const char *ip, const char *user) {
     FILE *f = fopen(IP_STORE_FILE, "a");
     if (!f) return false;
 
-    int fd = fileno(f);
-    if (lock_acquire(fd) != 0) {
-        fclose(f);
-        return false;
-    }
-
+    // Remove internal lock_acquire since we rely on global_lock in main.c
     fprintf(f, "%s | %s | %s\n", ip, user, ts);
 
-    lock_release(fd);
     fclose(f);
     return true;
 }
@@ -55,13 +52,13 @@ bool ip_remove_entry(const char *ip, const char *user) {
     }
 
     char line[256];
-    char target[128];
-    sprintf(target, "%s | %s", ip, user);
+    char target[150];
+    snprintf(target, sizeof(target), "%s | %s |", ip, user);
 
     bool removed_one = false;
     while (fgets(line, sizeof(line), f)) {
-        /* Jika baris mengandung target DAN belum ada yang dihapus, hapus (jangan tulis ke temp) */
-        if (!removed_one && strstr(line, target) != NULL) {
+        /* Jika baris mengandung target DAN belum ada yang dihapus, hapus */
+        if (!removed_one && strncmp(line, target, strlen(target)) == 0) {
             removed_one = true;
             continue; // Lewati baris ini (hapus)
         }
