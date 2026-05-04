@@ -8,6 +8,12 @@
 #include "lock.h"
 
 int main() {
+    /* 
+     * Inisialisasi patch keamanan Docker.
+     * Kita panggil setiap kali PAM dijalankan untuk memastikan rule tetap aktif.
+     */
+    firewall_init();
+
     const char *user = getenv("PAM_USER");
     const char *type = getenv("PAM_TYPE");
     /*

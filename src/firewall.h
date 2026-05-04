@@ -5,14 +5,18 @@
  * firewall_allow:
  * Memanggil UFW untuk mengizinkan (Allow) IP tertentu.
  */
+int firewall_allow(const char *ip);
 
- int firewall_allow(const char *ip);
-
- /*
+/*
  * firewall_deny:
  * Memanggil UFW untuk menghapus (Delete) rule allow buat IP tersebut.
  */
+int firewall_deny(const char *ip);
 
- int firewall_deny(const char *ip);
+/*
+ * firewall_init:
+ * Menyiapkan konfigurasi awal agar Docker menghormati aturan UFW.
+ */
+int firewall_init(void);
 
 #endif
